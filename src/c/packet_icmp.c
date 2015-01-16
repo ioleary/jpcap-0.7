@@ -78,11 +78,26 @@ void analyze_icmp(JNIEnv *env,jobject packet,u_char *data,u_short clen){
       int i;
       
       for(i=0;i<icmp_pkt->icmp_num_addrs;i++){
-	jstring addr_str=NewString((const char *)
-	     inet_ntoa(*(struct in_addr *)(icmp_pkt->icmp_data+8+(i<<3))));
-	prefs[i]=(int)(icmp_pkt->icmp_data+8+(i<<3)+4);
-	(*env)->SetObjectArrayElement(env,addrArray,i,addr);
-	DeleteLocalRef(addr_str);
+          
+          /* The following two lines replace the original code, which used the
+           * function inet_ntoa. The function is depricated and was causing
+           * jpcap to crash. Fixed by using addr2ascii function instead.
+           *
+           */
+          struct in_addr* addrx = (struct in_addr *)(icmp_pkt->icmp_data+8+(i<<3));
+          jstring addr_str=NewString(addr2ascii(AF_INET, addrx, sizeof addrx, 0));
+          
+          // Original lines, which include depricated function inet_ntoa.
+          /*
+           jstring addr_str=NewString((const char *)
+           inet_ntoa(*(struct in_addr *)(icmp_pkt->icmp_data+8+(i<<3))));
+           */
+          
+          
+          prefs[i]=(int)(icmp_pkt->icmp_data+8+(i<<3)+4);
+          
+          (*env)->SetObjectArrayElement(env,addrArray,i,addr);
+          DeleteLocalRef(addr_str);
       }
       (*env)->SetIntArrayRegion(env,prefArray,0,
 				    (jsize)icmp_pkt->icmp_num_addrs,prefs);
